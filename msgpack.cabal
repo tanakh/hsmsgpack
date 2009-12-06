@@ -1,14 +1,17 @@
-name:                msgpack
-version:             0.1.0
-synopsis:            A MessagePack binding for Haskell
-description:         A MessagePack binding for Haskell
-category:            Data
-license:             BSD3
-license-file:        LICENSE
-author:              Hideyuki Tanaka
-maintainer:          user@email.address
-cabal-version:	     >=1.6
-build-type:          Simple
+Name:                msgpack
+Version:             0.1.0
+License:             BSD3
+License-File:        LICENSE
+Author:              Hideyuki Tanaka
+Maintainer:          Hideyuki Tanaka <tanaka.hideyuki@gmail.com>
+Category:            Data
+Synopsis:            A Haskell binding to MessagePack
+Description:         A Haskell binding to MessagePack
+Homepage:	     http://github.com/tanakh/hsmsgpack
+Stability:	     Experimental
+Tested-with:	     GHC==6.10.4
+Cabal-Version:	     >=1.2
+Build-Type:          Simple
 
 library
   build-depends:	base>=4, mtl, bytestring

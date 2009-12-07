@@ -3,11 +3,27 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE IncoherentInstances #-}
 
+--------------------------------------------------------------------
+-- |
+-- Module    : Data.MessagePack.Base
+-- Copyright : (c) Hideyuki Tanaka, 2009
+-- License   : BSD3
+--
+-- Maintainer:  tanaka.hideyuki@gmail.com
+-- Stability :  experimental
+-- Portability: portable
+--
+-- Low Level Interface to MessagePack C API
+--
+--------------------------------------------------------------------
+
 module Data.MessagePack.Base(
+  -- * Simple Buffer
   SimpleBuffer,
   newSimpleBuffer,
   simpleBufferData,
   
+  -- * Serializer
   Packer,
   newPacker,
   
@@ -34,11 +50,7 @@ module Data.MessagePack.Base(
   packRAWBody,
   packRAW',
   
-  Object(..),
-  packObject,
-  
-  unpackObject,
-  
+  -- * Stream Deserializer
   Unpacker,
   defaultInitialBufferSize,
   newUnpacker,
@@ -54,6 +66,14 @@ module Data.MessagePack.Base(
   unpackerReset,
   unpackerMessageSize,
   
+  -- * MessagePack Object
+  Object(..),
+  packObject,
+  
+  UnpackReturn(..),
+  unpackObject,
+  
+  -- * Memory Zone
   Zone,
   newZone,
   freeZone,
@@ -80,6 +100,7 @@ type SimpleBuffer = ForeignPtr ()
 
 type WriteCallback = Ptr () -> CString -> CUInt -> IO CInt
 
+-- | Create a new Simple Buffer. It will be deleted automatically.
 newSimpleBuffer :: IO SimpleBuffer
 newSimpleBuffer = do
   ptr <- mallocBytes (#size msgpack_sbuffer)
@@ -90,6 +111,7 @@ newSimpleBuffer = do
     msgpack_sbuffer_init p
   return fptr
 
+-- | Get data of Simple Buffer.
 simpleBufferData :: SimpleBuffer -> IO ByteString
 simpleBufferData sb =
   withForeignPtr sb $ \ptr -> do
@@ -113,6 +135,7 @@ foreign import ccall "msgpack_sbuffer_write_wrap" msgpack_sbuffer_write ::
 
 type Packer = ForeignPtr ()
 
+-- | Create new Packer. It will be deleted automatically.
 newPacker :: SimpleBuffer -> IO Packer
 newPacker sbuf = do
   cb <- wrap_callback msgpack_sbuffer_write
@@ -207,9 +230,11 @@ packS64 pc n =
 foreign import ccall "msgpack_pack_int64_wrap" msgpack_pack_int64 ::
   Ptr () -> Int64 -> IO CInt
 
+-- | Pack an integral data.
 packInt :: Integral a => Packer -> a -> IO Int
 packInt pc n = packS64 pc $ fromIntegral n
 
+-- | Pack a double data.
 packDouble :: Packer -> Double -> IO Int
 packDouble pc d =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
@@ -219,6 +244,7 @@ packDouble pc d =
 foreign import ccall "msgpack_pack_double_wrap" msgpack_pack_double ::
   Ptr () -> CDouble -> IO CInt
 
+-- | Pack a nil.
 packNil :: Packer -> IO Int
 packNil pc =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
@@ -246,10 +272,13 @@ packFalse pc =
 foreign import ccall "msgpack_pack_false_wrap" msgpack_pack_false ::
   Ptr () -> IO CInt
 
+-- | Pack a bool data.
 packBool :: Packer -> Bool -> IO Int
 packBool pc True  = packTrue pc
 packBool pc False = packFalse pc
 
+-- | 'packArray' @p n@ starts packing an array. 
+-- Next @n@ data will consist this array.
 packArray :: Packer -> Int -> IO Int
 packArray pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
@@ -259,6 +288,8 @@ packArray pc n =
 foreign import ccall "msgpack_pack_array_wrap" msgpack_pack_array ::
   Ptr () -> CUInt -> IO CInt
 
+-- | 'packMap' @p n@ starts packing a map. 
+-- Next @n@ pairs of data (2*n data) will consist this map.
 packMap :: Packer -> Int -> IO Int
 packMap pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
@@ -268,6 +299,8 @@ packMap pc n =
 foreign import ccall "msgpack_pack_map_wrap" msgpack_pack_map ::
   Ptr () -> CUInt -> IO CInt
 
+-- | 'packRAW' @p n@ starts packing a byte sequence. 
+-- Next total @n@ bytes of 'packRAWBody' call will consist this sequence.
 packRAW :: Packer -> Int -> IO Int
 packRAW pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
@@ -277,6 +310,7 @@ packRAW pc n =
 foreign import ccall "msgpack_pack_raw_wrap" msgpack_pack_raw ::
   Ptr () -> CSize -> IO CInt
 
+-- | Pack a byte sequence.
 packRAWBody :: Packer -> ByteString -> IO Int
 packRAWBody pc bs =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
@@ -287,6 +321,7 @@ packRAWBody pc bs =
 foreign import ccall "msgpack_pack_raw_body_wrap" msgpack_pack_raw_body ::
   Ptr () -> Ptr () -> CSize -> IO CInt
 
+-- | Pack a single byte stream. It calls 'packRAW' and 'packRAWBody'.
 packRAW' :: Packer -> ByteString -> IO Int
 packRAW' pc bs = do
   packRAW pc (BS.length bs)
@@ -297,6 +332,7 @@ type Unpacker = ForeignPtr ()
 defaultInitialBufferSize :: Int
 defaultInitialBufferSize = 32 * 1024 -- #const MSGPACK_UNPACKER_DEFAULT_INITIAL_BUFFER_SIZE
 
+-- | 'newUnpacker' @initialBufferSize@ creates a new Unpacker. It will be deleted automatically.
 newUnpacker :: Int -> IO Unpacker
 newUnpacker initialBufferSize = do
   ptr <- msgpack_unpacker_new (fromIntegral initialBufferSize)
@@ -304,64 +340,13 @@ newUnpacker initialBufferSize = do
     msgpack_unpacker_free ptr
   return fptr
 
--- #def msgpack_unpacker *msgpack_unpacker_new_wrap(size_t initial_buffer_size){ return msgpack_unpacker_new(initial_buffer_size); }
-
 foreign import ccall "msgpack_unpacker_new" msgpack_unpacker_new ::
   CSize -> IO (Ptr ())
 
 foreign import ccall "msgpack_unpacker_free" msgpack_unpacker_free ::
   Ptr() -> IO ()
 
-packObject :: Packer -> Object -> IO ()
-packObject pc ObjectNil = packNil pc >> return ()
-
-packObject pc (ObjectBool b) = packBool pc b >> return ()
-
-packObject pc (ObjectInteger n) = packInt pc n >> return ()
-
-packObject pc (ObjectDouble d) = packDouble pc d >> return ()
-
-packObject pc (ObjectRAW bs) = packRAW' pc bs >> return ()
-
-packObject pc (ObjectArray ls) = do
-  packArray pc (length ls)
-  mapM_ (packObject pc) ls
-
-packObject pc (ObjectMap ls) = do
-  packMap pc (length ls)
-  mapM_ (\(a, b) -> packObject pc a >> packObject pc b) ls
-
-data UnpackReturn =
-  UnpackContinue
-  | UnpackParseError
-  | UnpackError
-  deriving (Eq, Show)
-
-unpackObject :: Zone -> ByteString -> IO (Either UnpackReturn (Int, Object))
-unpackObject z dat =
-  allocaBytes (#size msgpack_object) $ \ptr ->
-  BS.useAsCStringLen dat $ \(str, len) ->
-  alloca $ \poff -> do
-    ret <- msgpack_unpack str (fromIntegral len) poff z ptr
-    case ret of
-      (#const MSGPACK_UNPACK_SUCCESS) -> do
-        off <- peek poff
-        obj <- peekObject ptr
-        return $ Right (fromIntegral off, obj)
-      (#const MSGPACK_UNPACK_EXTRA_BYTES) -> do
-        off <- peek poff
-        obj <- peekObject ptr
-        return $ Right (fromIntegral off, obj)
-      (#const MSGPACK_UNPACK_CONTINUE) ->
-        return $ Left UnpackContinue
-      (#const MSGPACK_UNPACK_PARSE_ERROR) ->
-        return $ Left UnpackParseError
-      _ ->
-        return $ Left UnpackError
-
-foreign import ccall "msgpack_unpack" msgpack_unpack ::
-  Ptr CChar -> CSize -> Ptr CSize -> Zone -> Ptr () -> IO CInt
-
+-- | 'unpackerReserveBuffer' @up size@ reserves at least @size@ bytes of buffer.
 unpackerReserveBuffer :: Unpacker -> Int -> IO Bool
 unpackerReserveBuffer up size =
   withForeignPtr up $ \ptr ->
@@ -372,6 +357,7 @@ unpackerReserveBuffer up size =
 foreign import ccall "msgpack_unpacker_reserve_buffer_wrap" msgpack_unpacker_reserve_buffer ::
   Ptr () -> CSize -> IO CChar
 
+-- | Get a pointer of unpacker buffer.
 unpackerBuffer :: Unpacker -> IO (Ptr CChar)
 unpackerBuffer up =
   withForeignPtr up $ \ptr ->
@@ -382,6 +368,7 @@ unpackerBuffer up =
 foreign import ccall "msgpack_unpacker_buffer_wrap" msgpack_unpacker_buffer ::
   Ptr () -> IO (Ptr CChar)
 
+-- | Get size of allocated buffer.
 unpackerBufferCapacity :: Unpacker -> IO Int
 unpackerBufferCapacity up =
   withForeignPtr up $ \ptr ->
@@ -392,6 +379,7 @@ unpackerBufferCapacity up =
 foreign import ccall "msgpack_unpacker_buffer_capacity_wrap" msgpack_unpacker_buffer_capacity ::
   Ptr () -> IO CSize
 
+-- | 'unpackerBufferConsumed' @up size@ notices that writed @size@ bytes to buffer.
 unpackerBufferConsumed :: Unpacker -> Int -> IO ()
 unpackerBufferConsumed up size =
   withForeignPtr up $ \ptr ->
@@ -402,6 +390,7 @@ unpackerBufferConsumed up size =
 foreign import ccall "msgpack_unpacker_buffer_consumed_wrap" msgpack_unpacker_buffer_consumed ::
   Ptr () -> CSize -> IO ()
 
+-- | Write byte sequence to Unpacker. It is utility funciton, calls 'unpackerReserveBuffer', 'unpackerBuffer' and 'unpackerBufferConsumed'.
 unpackerFeed :: Unpacker -> ByteString -> IO ()
 unpackerFeed up bs =
   BS.useAsCStringLen bs $ \(str, len) -> do
@@ -410,6 +399,7 @@ unpackerFeed up bs =
     copyArray ptr str len
     unpackerBufferConsumed up len
 
+-- | Execute deserializing. It returns 0 when buffer contains not enough bytes, returns 1 when succeeded, returns negative value when it failed.
 unpackerExecute :: Unpacker -> IO Int
 unpackerExecute up =
   withForeignPtr up $ \ptr ->
@@ -418,6 +408,7 @@ unpackerExecute up =
 foreign import ccall "msgpack_unpacker_execute" msgpack_unpacker_execute ::
   Ptr () -> IO CInt
 
+-- | Returns a deserialized object when 'unpackerExecute' returned 1.
 unpackerData :: Unpacker -> IO Object
 unpackerData up =
   withForeignPtr up $ \ptr ->
@@ -430,6 +421,7 @@ unpackerData up =
 foreign import ccall "msgpack_unpacker_data_wrap" msgpack_unpacker_data ::
   Ptr () -> Ptr () -> IO ()
 
+-- | Release memory zone. The returned zone must be freed by calling 'freeZone'.
 unpackerReleaseZone :: Unpacker -> IO Zone
 unpackerReleaseZone up =
   withForeignPtr up $ \ptr ->
@@ -438,6 +430,7 @@ unpackerReleaseZone up =
 foreign import ccall "msgpack_unpacker_release_zone" msgpack_unpacker_release_zone ::
   Ptr () -> IO (Ptr ())
 
+-- | Free memory zone used by Unapcker.
 unpackerResetZone :: Unpacker -> IO ()
 unpackerResetZone up =
   withForeignPtr up $ \ptr ->
@@ -446,6 +439,7 @@ unpackerResetZone up =
 foreign import ccall "msgpack_unpacker_reset_zone" msgpack_unpacker_reset_zone ::
   Ptr () -> IO ()
 
+-- | Reset Unpacker state except memory zone.
 unpackerReset :: Unpacker -> IO ()
 unpackerReset up =
   withForeignPtr up $ \ptr ->
@@ -454,6 +448,7 @@ unpackerReset up =
 foreign import ccall "msgpack_unpacker_reset" msgpack_unpacker_reset ::
   Ptr () -> IO ()
 
+-- | Returns number of bytes of sequence of deserializing object.
 unpackerMessageSize :: Unpacker -> IO Int
 unpackerMessageSize up =
   withForeignPtr up $ \ptr ->
@@ -466,14 +461,17 @@ foreign import ccall "msgpack_unpacker_message_size_wrap" msgpack_unpacker_messa
 
 type Zone = Ptr ()
 
+-- | Create a new memory zone. It must be freed manually.
 newZone :: IO Zone
 newZone =
   msgpack_zone_new (#const MSGPACK_ZONE_CHUNK_SIZE)
 
+-- | Free a memory zone.
 freeZone :: Zone -> IO ()
 freeZone z =
   msgpack_zone_free z
 
+-- | Create a memory zone, then execute argument, then free memory zone.
 withZone :: (Zone -> IO a) -> IO a
 withZone z =
   bracket newZone freeZone z
@@ -484,6 +482,7 @@ foreign import ccall "msgpack_zone_new" msgpack_zone_new ::
 foreign import ccall "msgpack_zone_free" msgpack_zone_free ::
   Zone -> IO ()
 
+-- | Object Representation of MessagePack data.
 data Object =
   ObjectNil
   | ObjectBool Bool
@@ -567,3 +566,55 @@ peekObjectKV ptr = do
   k <- peekObject $ ptr `plusPtr` (#offset msgpack_object_kv, key)
   v <- peekObject $ ptr `plusPtr` (#offset msgpack_object_kv, val)
   return (k, v)
+
+-- | Pack a Object.
+packObject :: Packer -> Object -> IO ()
+packObject pc ObjectNil = packNil pc >> return ()
+
+packObject pc (ObjectBool b) = packBool pc b >> return ()
+
+packObject pc (ObjectInteger n) = packInt pc n >> return ()
+
+packObject pc (ObjectDouble d) = packDouble pc d >> return ()
+
+packObject pc (ObjectRAW bs) = packRAW' pc bs >> return ()
+
+packObject pc (ObjectArray ls) = do
+  packArray pc (length ls)
+  mapM_ (packObject pc) ls
+
+packObject pc (ObjectMap ls) = do
+  packMap pc (length ls)
+  mapM_ (\(a, b) -> packObject pc a >> packObject pc b) ls
+
+data UnpackReturn =
+  UnpackContinue     -- ^ not enough bytes to unpack object
+  | UnpackParseError -- ^ got invalid bytes
+  | UnpackError      -- ^ other error
+  deriving (Eq, Show)
+
+-- | Unpack a single MessagePack object from byte sequence.
+unpackObject :: Zone -> ByteString -> IO (Either UnpackReturn (Int, Object))
+unpackObject z dat =
+  allocaBytes (#size msgpack_object) $ \ptr ->
+  BS.useAsCStringLen dat $ \(str, len) ->
+  alloca $ \poff -> do
+    ret <- msgpack_unpack str (fromIntegral len) poff z ptr
+    case ret of
+      (#const MSGPACK_UNPACK_SUCCESS) -> do
+        off <- peek poff
+        obj <- peekObject ptr
+        return $ Right (fromIntegral off, obj)
+      (#const MSGPACK_UNPACK_EXTRA_BYTES) -> do
+        off <- peek poff
+        obj <- peekObject ptr
+        return $ Right (fromIntegral off, obj)
+      (#const MSGPACK_UNPACK_CONTINUE) ->
+        return $ Left UnpackContinue
+      (#const MSGPACK_UNPACK_PARSE_ERROR) ->
+        return $ Left UnpackParseError
+      _ ->
+        return $ Left UnpackError
+
+foreign import ccall "msgpack_unpack" msgpack_unpack ::
+  Ptr CChar -> CSize -> Ptr CSize -> Zone -> Ptr () -> IO CInt

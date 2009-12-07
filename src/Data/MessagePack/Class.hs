@@ -2,7 +2,22 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverlappingInstances #-}
 
+--------------------------------------------------------------------
+-- |
+-- Module    : Data.MessagePack.Class
+-- Copyright : (c) Hideyuki Tanaka, 2009
+-- License   : BSD3
+--
+-- Maintainer:  tanaka.hideyuki@gmail.com
+-- Stability :  experimental
+-- Portability: portable
+--
+-- Serializing Haskell values to and from MessagePack Objects.
+--
+--------------------------------------------------------------------
+
 module Data.MessagePack.Class(
+  -- * Serialization to and from Object
   OBJECT(..),
   Result(..),
   pack,
@@ -15,10 +30,12 @@ import Data.Either
 
 import Data.MessagePack.Base
 
+-- | The class of types serializable to and from MessagePack object
 class OBJECT a where
   toObject :: a -> Object
   fromObject :: Object -> Result a
 
+-- | A type for parser results
 type Result a = Either String a
 
 instance OBJECT Object where
@@ -74,5 +91,6 @@ instance OBJECT a => OBJECT (Maybe a) where
   fromObject ObjectNil = return Nothing
   fromObject obj = liftM Just $ fromObject obj
 
+-- | Pack a serializable Haskell value.
 pack :: OBJECT a => Packer -> a -> IO ()
 pack pc = packObject pc . toObject

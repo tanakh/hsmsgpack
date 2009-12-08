@@ -15,6 +15,7 @@
 module Data.MessagePack(
   module Data.MessagePack.Base,
   module Data.MessagePack.Class,
+  module Data.MessagePack.Stream,
   
   -- * Pack and Unpack
   packb,
@@ -30,6 +31,7 @@ import System.IO.Unsafe
 
 import Data.MessagePack.Base
 import Data.MessagePack.Class
+import Data.MessagePack.Stream
 
 -- | Pack Haskell data to MessagePack string.
 packb :: OBJECT a => a -> IO ByteString

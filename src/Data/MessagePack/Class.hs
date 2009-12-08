@@ -19,12 +19,12 @@
 module Data.MessagePack.Class(
   -- * Serialization to and from Object
   OBJECT(..),
-  Result(..),
+  Result,
   pack,
   ) where
 
 import Control.Monad.Error
-import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as C8
 import Data.Either
 

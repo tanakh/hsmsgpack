@@ -25,4 +25,4 @@ library
     Data.MessagePack.Class
 
   C-Sources:
-    dist/build/Data/MessagePack/Base_hsc.c
+    cbits/msgpack.c

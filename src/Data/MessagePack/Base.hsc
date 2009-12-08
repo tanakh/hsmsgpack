@@ -119,17 +119,12 @@ simpleBufferData sb =
     dat  <- (#peek msgpack_sbuffer, data) ptr
     BS.packCStringLen (dat, fromIntegral (size :: CSize))
 
-#def void msgpack_sbuffer_init_wrap(msgpack_sbuffer* sbuf){ msgpack_sbuffer_init(sbuf); }
-
 foreign import ccall "msgpack_sbuffer_init_wrap" msgpack_sbuffer_init ::
   Ptr () -> IO ()
-
-#def void msgpack_sbuffer_destroy_wrap(msgpack_sbuffer* sbuf){ msgpack_sbuffer_destroy(sbuf); }
 
 foreign import ccall "msgpack_sbuffer_destroy_wrap" msgpack_sbuffer_destroy ::
   Ptr () -> IO ()
 
-#def int msgpack_sbuffer_write_wrap(void* data, const char* buf, unsigned int len){ return msgpack_sbuffer_write(data, buf, len); }
 foreign import ccall "msgpack_sbuffer_write_wrap" msgpack_sbuffer_write ::
   WriteCallback
 
@@ -145,12 +140,8 @@ newPacker sbuf = do
     msgpack_packer_free ptr
   return fptr
 
-#def msgpack_packer* msgpack_packer_new_wrap(void *data, msgpack_packer_write callback){ return msgpack_packer_new(data, callback); }
-
 foreign import ccall "msgpack_packer_new_wrap" msgpack_packer_new ::
   Ptr () -> FunPtr WriteCallback -> IO (Ptr ())
-
-#def void msgpack_packer_free_wrap(msgpack_packer* pk){ msgpack_packer_free(pk); }
 
 foreign import ccall "msgpack_packer_free_wrap" msgpack_packer_free ::
   Ptr () -> IO ()
@@ -163,7 +154,6 @@ packU8 pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_uint8 ptr n
 
-#def int msgpack_pack_uint8_wrap(msgpack_packer* pk, uint8_t d){ return msgpack_pack_uint8(pk, d); }
 foreign import ccall "msgpack_pack_uint8_wrap" msgpack_pack_uint8 ::
   Ptr () -> Word8 -> IO CInt
 
@@ -172,7 +162,6 @@ packU16 pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_uint16 ptr n
 
-#def int msgpack_pack_uint16_wrap(msgpack_packer* pk, uint16_t d){ return msgpack_pack_uint16(pk, d); }
 foreign import ccall "msgpack_pack_uint16_wrap" msgpack_pack_uint16 ::
   Ptr () -> Word16 -> IO CInt
 
@@ -181,7 +170,6 @@ packU32 pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_uint32 ptr n
 
-#def int msgpack_pack_uint32_wrap(msgpack_packer* pk, uint32_t d){ return msgpack_pack_uint32(pk, d); }
 foreign import ccall "msgpack_pack_uint32_wrap" msgpack_pack_uint32 ::
   Ptr () -> Word32 -> IO CInt
 
@@ -190,7 +178,6 @@ packU64 pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_uint64 ptr n
 
-#def int msgpack_pack_uint64_wrap(msgpack_packer* pk, uint64_t d){ return msgpack_pack_uint64(pk, d); }
 foreign import ccall "msgpack_pack_uint64_wrap" msgpack_pack_uint64 ::
   Ptr () -> Word64 -> IO CInt
 
@@ -199,7 +186,6 @@ packS8 pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_int8 ptr n
 
-#def int msgpack_pack_int8_wrap(msgpack_packer* pk, int8_t d){ return msgpack_pack_int8(pk, d); }
 foreign import ccall "msgpack_pack_int8_wrap" msgpack_pack_int8 ::
   Ptr () -> Int8 -> IO CInt
 
@@ -208,7 +194,6 @@ packS16 pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_int16 ptr n
 
-#def int msgpack_pack_int16_wrap(msgpack_packer* pk, int16_t d){ return msgpack_pack_int16(pk, d); }
 foreign import ccall "msgpack_pack_int16_wrap" msgpack_pack_int16 ::
   Ptr () -> Int16 -> IO CInt
 
@@ -217,7 +202,6 @@ packS32 pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_int32 ptr n
 
-#def int msgpack_pack_int32_wrap(msgpack_packer* pk, int32_t d){ return msgpack_pack_int32(pk, d); }
 foreign import ccall "msgpack_pack_int32_wrap" msgpack_pack_int32 ::
   Ptr () -> Int32 -> IO CInt
 
@@ -226,7 +210,6 @@ packS64 pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_int64 ptr n
 
-#def int msgpack_pack_int64_wrap(msgpack_packer* pk, int64_t d){ return msgpack_pack_int64(pk, d); }
 foreign import ccall "msgpack_pack_int64_wrap" msgpack_pack_int64 ::
   Ptr () -> Int64 -> IO CInt
 
@@ -240,7 +223,6 @@ packDouble pc d =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_double ptr (realToFrac d)
 
-#def int msgpack_pack_double_wrap(msgpack_packer* pk, double d){ return msgpack_pack_double(pk, d); }
 foreign import ccall "msgpack_pack_double_wrap" msgpack_pack_double ::
   Ptr () -> CDouble -> IO CInt
 
@@ -250,7 +232,6 @@ packNil pc =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_nil ptr
 
-#def int msgpack_pack_nil_wrap(msgpack_packer* pk){ return msgpack_pack_nil(pk); }
 foreign import ccall "msgpack_pack_nil_wrap" msgpack_pack_nil ::
   Ptr () -> IO CInt
 
@@ -259,7 +240,6 @@ packTrue pc =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_true ptr
 
-#def int msgpack_pack_true_wrap(msgpack_packer* pk){ return msgpack_pack_true(pk); }
 foreign import ccall "msgpack_pack_true_wrap" msgpack_pack_true ::
   Ptr () -> IO CInt
 
@@ -268,7 +248,6 @@ packFalse pc =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_false ptr
 
-#def int msgpack_pack_false_wrap(msgpack_packer* pk){ return msgpack_pack_false(pk); }
 foreign import ccall "msgpack_pack_false_wrap" msgpack_pack_false ::
   Ptr () -> IO CInt
 
@@ -284,7 +263,6 @@ packArray pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_array ptr (fromIntegral n)
 
-#def int msgpack_pack_array_wrap(msgpack_packer* pk, unsigned int n){ return msgpack_pack_array(pk, n); }
 foreign import ccall "msgpack_pack_array_wrap" msgpack_pack_array ::
   Ptr () -> CUInt -> IO CInt
 
@@ -295,7 +273,6 @@ packMap pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_map ptr (fromIntegral n)
 
-#def int msgpack_pack_map_wrap(msgpack_packer* pk, unsigned int n){ return msgpack_pack_map(pk, n); }
 foreign import ccall "msgpack_pack_map_wrap" msgpack_pack_map ::
   Ptr () -> CUInt -> IO CInt
 
@@ -306,7 +283,6 @@ packRAW pc n =
   liftM fromIntegral $ withForeignPtr pc $ \ptr ->
     msgpack_pack_raw ptr (fromIntegral n)
 
-#def int msgpack_pack_raw_wrap(msgpack_packer* pk, size_t l){ return msgpack_pack_raw(pk, l); }
 foreign import ccall "msgpack_pack_raw_wrap" msgpack_pack_raw ::
   Ptr () -> CSize -> IO CInt
 
@@ -317,7 +293,6 @@ packRAWBody pc bs =
   BS.useAsCStringLen bs $ \(str, len) ->
     msgpack_pack_raw_body ptr (castPtr str) (fromIntegral len)
 
-#def int msgpack_pack_raw_body_wrap(msgpack_packer* pk, const void *b, size_t l){ return msgpack_pack_raw_body(pk, b, l); }
 foreign import ccall "msgpack_pack_raw_body_wrap" msgpack_pack_raw_body ::
   Ptr () -> Ptr () -> CSize -> IO CInt
 
@@ -352,8 +327,6 @@ unpackerReserveBuffer up size =
   withForeignPtr up $ \ptr ->
   liftM (/=0) $ msgpack_unpacker_reserve_buffer ptr (fromIntegral size)
 
-#def bool msgpack_unpacker_reserve_buffer_wrap(msgpack_unpacker *mpac, size_t size){ return msgpack_unpacker_reserve_buffer(mpac, size); }
-
 foreign import ccall "msgpack_unpacker_reserve_buffer_wrap" msgpack_unpacker_reserve_buffer ::
   Ptr () -> CSize -> IO CChar
 
@@ -362,8 +335,6 @@ unpackerBuffer :: Unpacker -> IO (Ptr CChar)
 unpackerBuffer up =
   withForeignPtr up $ \ptr ->
   msgpack_unpacker_buffer ptr
-
-#def char *msgpack_unpacker_buffer_wrap(msgpack_unpacker *mpac){ return msgpack_unpacker_buffer(mpac); }
 
 foreign import ccall "msgpack_unpacker_buffer_wrap" msgpack_unpacker_buffer ::
   Ptr () -> IO (Ptr CChar)
@@ -374,8 +345,6 @@ unpackerBufferCapacity up =
   withForeignPtr up $ \ptr ->
   liftM fromIntegral $ msgpack_unpacker_buffer_capacity ptr
 
-#def size_t msgpack_unpacker_buffer_capacity_wrap(const msgpack_unpacker *mpac){ return msgpack_unpacker_buffer_capacity(mpac); }
-
 foreign import ccall "msgpack_unpacker_buffer_capacity_wrap" msgpack_unpacker_buffer_capacity ::
   Ptr () -> IO CSize
 
@@ -384,8 +353,6 @@ unpackerBufferConsumed :: Unpacker -> Int -> IO ()
 unpackerBufferConsumed up size =
   withForeignPtr up $ \ptr ->
   msgpack_unpacker_buffer_consumed ptr (fromIntegral size)
-
-#def void msgpack_unpacker_buffer_consumed_wrap(msgpack_unpacker *mpac, size_t size){ msgpack_unpacker_buffer_consumed(mpac, size); }
 
 foreign import ccall "msgpack_unpacker_buffer_consumed_wrap" msgpack_unpacker_buffer_consumed ::
   Ptr () -> CSize -> IO ()
@@ -415,8 +382,6 @@ unpackerData up =
   allocaBytes (#size msgpack_object) $ \pobj -> do
     msgpack_unpacker_data ptr pobj
     peekObject pobj
-
-#def void msgpack_unpacker_data_wrap(msgpack_unpacker *mpac, msgpack_object *obj){ *obj=msgpack_unpacker_data(mpac); }
 
 foreign import ccall "msgpack_unpacker_data_wrap" msgpack_unpacker_data ::
   Ptr () -> Ptr () -> IO ()
@@ -453,8 +418,6 @@ unpackerMessageSize :: Unpacker -> IO Int
 unpackerMessageSize up =
   withForeignPtr up $ \ptr ->
   liftM fromIntegral $ msgpack_unpacker_message_size ptr
-
-#def size_t msgpack_unpacker_message_size_wrap(const msgpack_unpacker *mpac){ return msgpack_unpacker_message_size(mpac); }
 
 foreign import ccall "msgpack_unpacker_message_size_wrap" msgpack_unpacker_message_size ::
   Ptr () -> IO CSize

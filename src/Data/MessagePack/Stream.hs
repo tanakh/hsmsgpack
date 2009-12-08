@@ -36,7 +36,7 @@ unpackObjects up feeder = f where
       1 -> do
         liftM Just $ unpackerData up
       _ ->
-        error "unpackerExecute fails"
+        error $ "unpackerExecute fails: " ++ show resp
 
   feedOnce = do
     dat <- feeder

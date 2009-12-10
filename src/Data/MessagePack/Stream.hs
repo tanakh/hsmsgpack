@@ -12,33 +12,39 @@ import System.IO
 import System.IO.Unsafe
 
 import Data.MessagePack.Base
-import Data.MessagePack.Class
+import Data.MessagePack.Feed
 
-unpackObjects :: Unpacker -> (IO (Maybe ByteString)) -> IO [Object]
-unpackObjects up feeder = f where
-  f = unsafeInterleaveIO $ do
-    mbo <- unpackOnce
+unpackObjects :: Feeder -> IO [Object]
+unpackObjects feeder = do
+  up <- newUnpacker defaultInitialBufferSize
+  f up
+  where
+  f up = unsafeInterleaveIO $ do
+    mbo <- unpackOnce up
     case mbo of
       Just o -> do
-        os <- f
+        os <- f up
         return $ o:os
       Nothing ->
         return []
 
-  unpackOnce = do
+  unpackOnce up = do
     resp <- unpackerExecute up
     case resp of
       0 -> do
-        r <- feedOnce
+        r <- feedOnce up
         if r
-          then unpackOnce
+          then unpackOnce up
           else return Nothing
       1 -> do
-        liftM Just $ unpackerData up
+        obj <- unpackerData up
+        freeZone =<< unpackerReleaseZone up
+        unpackerReset up
+        return $ Just obj
       _ ->
         error $ "unpackerExecute fails: " ++ show resp
 
-  feedOnce = do
+  feedOnce up = do
     dat <- feeder
     case dat of
       Nothing ->
@@ -48,24 +54,13 @@ unpackObjects up feeder = f where
         return True
 
 unpackObjectsFromFile :: FilePath -> IO [Object]
-unpackObjectsFromFile fname = do
-  h <- openFile fname ReadMode
-  unpackObjectsFromHandle h
+unpackObjectsFromFile fname =
+  unpackObjects =<< feederFromFile fname
 
 unpackObjectsFromHandle :: Handle -> IO [Object]
-unpackObjectsFromHandle h = do
-  up <- newUnpacker defaultInitialBufferSize
-  unpackObjects up f
-  where
-    bufSize = 4096
-    f = do
-      bs <- BS.hGet h bufSize
-      if BS.length bs > 0
-        then return $ Just bs
-        else return Nothing
-
+unpackObjectsFromHandle h =
+  unpackObjects =<< feederFromHandle h
+  
 unpackObjectsFromString :: ByteString -> IO [Object]
-unpackObjectsFromString bs = do
-  up <- newUnpacker defaultInitialBufferSize
-  unpackerFeed up bs
-  unpackObjects up $ return Nothing
+unpackObjectsFromString bs =
+  unpackObjects =<< feederFromString bs

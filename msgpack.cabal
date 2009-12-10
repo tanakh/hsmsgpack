@@ -24,6 +24,8 @@ library
     Data.MessagePack
     Data.MessagePack.Base
     Data.MessagePack.Class
+    Data.MessagePack.Feed
+    Data.MessagePack.Monad
     Data.MessagePack.Stream
 
   C-Sources:

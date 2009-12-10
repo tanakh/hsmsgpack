@@ -15,6 +15,8 @@
 module Data.MessagePack(
   module Data.MessagePack.Base,
   module Data.MessagePack.Class,
+  module Data.MessagePack.Feed,
+  module Data.MessagePack.Monad,
   module Data.MessagePack.Stream,
   
   -- * Pack and Unpack
@@ -31,6 +33,8 @@ import System.IO.Unsafe
 
 import Data.MessagePack.Base
 import Data.MessagePack.Class
+import Data.MessagePack.Feed
+import Data.MessagePack.Monad
 import Data.MessagePack.Stream
 
 -- | Pack Haskell data to MessagePack string.

@@ -1,3 +1,17 @@
+--------------------------------------------------------------------
+-- |
+-- Module    : Data.MessagePack.Stream
+-- Copyright : (c) Hideyuki Tanaka, 2009
+-- License   : BSD3
+--
+-- Maintainer:  tanaka.hideyuki@gmail.com
+-- Stability :  experimental
+-- Portability: portable
+--
+-- Lazy Stream Serializers and Deserializers
+--
+--------------------------------------------------------------------
+
 module Data.MessagePack.Stream(
   unpackObjects,
   unpackObjectsFromFile,
@@ -14,6 +28,7 @@ import System.IO.Unsafe
 import Data.MessagePack.Base
 import Data.MessagePack.Feed
 
+-- | Unpack objects using given feeder.
 unpackObjects :: Feeder -> IO [Object]
 unpackObjects feeder = do
   up <- newUnpacker defaultInitialBufferSize
@@ -53,14 +68,17 @@ unpackObjects feeder = do
         unpackerFeed up bs
         return True
 
+-- | Unpack objects from file.
 unpackObjectsFromFile :: FilePath -> IO [Object]
 unpackObjectsFromFile fname =
   unpackObjects =<< feederFromFile fname
 
+-- | Unpack objects from handle.
 unpackObjectsFromHandle :: Handle -> IO [Object]
 unpackObjectsFromHandle h =
   unpackObjects =<< feederFromHandle h
   
+-- | Unpack oobjects from given byte sequence.
 unpackObjectsFromString :: ByteString -> IO [Object]
 unpackObjectsFromString bs =
   unpackObjects =<< feederFromString bs

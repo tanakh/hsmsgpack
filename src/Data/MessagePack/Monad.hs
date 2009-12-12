@@ -1,14 +1,32 @@
+--------------------------------------------------------------------
+-- |
+-- Module    : Data.MessagePack.Monad
+-- Copyright : (c) Hideyuki Tanaka, 2009
+-- License   : BSD3
+--
+-- Maintainer:  tanaka.hideyuki@gmail.com
+-- Stability :  experimental
+-- Portability: portable
+--
+-- Monadic Stream Serializers and Deserializers
+--
+--------------------------------------------------------------------
+
 module Data.MessagePack.Monad(
+  -- * Classes
   MonadPacker(..),
   MonadUnpacker(..),
   
+  -- * Packer and Unpacker type
   PackerT(..),
   UnpackerT(..),
   
+  -- * Packers
   packToString,
   packToHandle,
   packToFile,
   
+  -- * Unpackers
   unpackFrom,
   unpackFromString,
   unpackFromHandle,
@@ -27,11 +45,14 @@ import Data.MessagePack.Class
 import Data.MessagePack.Feed
 
 class Monad m => MonadPacker m where
+  -- | Serialize a object
   put :: OBJECT a => a -> m ()
 
 class Monad m => MonadUnpacker m where
+  -- | Deserialize a object
   get :: OBJECT a => m a
 
+-- | Serializer Type
 newtype PackerT m r = PackerT { runPackerT :: Base.Packer -> m r }
 
 instance Monad m => Monad (PackerT m) where
@@ -53,6 +74,7 @@ instance MonadIO m => MonadPacker (PackerT m) where
   put v = PackerT $ \pc -> liftIO $ do
     pack pc v
 
+-- | Execute given serializer and returns byte sequence.
 packToString :: MonadIO m => PackerT m r -> m ByteString
 packToString m = do
   sb <- liftIO $ newSimpleBuffer
@@ -60,17 +82,20 @@ packToString m = do
   runPackerT m pc
   liftIO $ simpleBufferData sb
 
+-- | Execcute given serializer and write byte sequence to Handle.
 packToHandle :: MonadIO m => Handle -> PackerT m r -> m ()
 packToHandle h m = do
   sb <- packToString m
   liftIO $ BS.hPut h sb
   liftIO $ hFlush h
 
+-- | Execute given serializer and write byte sequence to file.
 packToFile :: MonadIO m => FilePath -> PackerT m r -> m ()
 packToFile p m = do
   sb <- packToString m
   liftIO $ BS.writeFile p sb
 
+-- | Deserializer type
 newtype UnpackerT m r = UnpackerT { runUnpackerT :: Base.Unpacker -> Feeder -> m r }
 
 instance Monad m => Monad (UnpackerT m) where
@@ -103,15 +128,18 @@ instance MonadIO m => MonadUnpacker (UnpackerT m) where
     let Right r = fromObject obj
     return r
 
+-- | Execute deserializer using given feeder.
 unpackFrom :: MonadIO m => Feeder -> UnpackerT m r -> m r
 unpackFrom f m = do
   up <- liftIO $ newUnpacker defaultInitialBufferSize
   runUnpackerT m up f
 
+-- | Execute deserializer using given handle.
 unpackFromHandle :: MonadIO m => Handle -> UnpackerT m r -> m r
 unpackFromHandle h m =
   flip unpackFrom m =<< liftIO (feederFromHandle h)
 
+-- | Execute deserializer using given file content.
 unpackFromFile :: MonadIO m => FilePath -> UnpackerT m r -> m r
 unpackFromFile p m = do
   h <- liftIO $ openFile p ReadMode
@@ -119,6 +147,7 @@ unpackFromFile p m = do
   liftIO $ hClose h
   return r
 
+-- | Execute deserializer from given byte sequence.
 unpackFromString :: MonadIO m => ByteString -> UnpackerT m r -> m r
 unpackFromString bs m = do
   flip unpackFrom m =<< liftIO (feederFromString bs)

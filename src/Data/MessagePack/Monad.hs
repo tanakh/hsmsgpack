@@ -1,12 +1,18 @@
 module Data.MessagePack.Monad(
+  MonadPacker(..),
   MonadUnpacker(..),
   
+  PackerT(..),
   UnpackerT(..),
   
+  packToString,
+  packToHandle,
+  packToFile,
+  
   unpackFrom,
+  unpackFromString,
   unpackFromHandle,
   unpackFromFile,
-  unpackFromString,
   ) where
 
 import Control.Monad
@@ -20,8 +26,50 @@ import qualified Data.MessagePack.Base as Base
 import Data.MessagePack.Class
 import Data.MessagePack.Feed
 
+class Monad m => MonadPacker m where
+  put :: OBJECT a => a -> m ()
+
 class Monad m => MonadUnpacker m where
   get :: OBJECT a => m a
+
+newtype PackerT m r = PackerT { runPackerT :: Base.Packer -> m r }
+
+instance Monad m => Monad (PackerT m) where
+  a >>= b =
+    PackerT $ \pc -> do
+      r <- runPackerT a pc
+      runPackerT (b r) pc
+  
+  return r =
+    PackerT $ \_ -> return r
+
+instance MonadTrans PackerT where
+  lift m = PackerT $ \_ -> m
+
+instance MonadIO m => MonadIO (PackerT m) where
+  liftIO = lift . liftIO
+
+instance MonadIO m => MonadPacker (PackerT m) where
+  put v = PackerT $ \pc -> liftIO $ do
+    pack pc v
+
+packToString :: MonadIO m => PackerT m r -> m ByteString
+packToString m = do
+  sb <- liftIO $ newSimpleBuffer
+  pc <- liftIO $ newPacker sb
+  runPackerT m pc
+  liftIO $ simpleBufferData sb
+
+packToHandle :: MonadIO m => Handle -> PackerT m r -> m ()
+packToHandle h m = do
+  sb <- packToString m
+  liftIO $ BS.hPut h sb
+  liftIO $ hFlush h
+
+packToFile :: MonadIO m => FilePath -> PackerT m r -> m ()
+packToFile p m = do
+  sb <- packToString m
+  liftIO $ BS.writeFile p sb
 
 newtype UnpackerT m r = UnpackerT { runUnpackerT :: Base.Unpacker -> Feeder -> m r }
 
